@@ -19,19 +19,28 @@ public class TankManager
 
     private TankMovement m_Movement;                        // Reference to tank's movement script, used to disable and enable control.
     private TankShooting m_Shooting;                        // Reference to tank's shooting script, used to disable and enable control.
+    private TankEnemy m_Enemy;
     private GameObject m_CanvasGameObject;                  // Used to disable the world space UI during the Starting and Ending phases of each round.
 
 
     public void Setup()
     {
-        // Get references to the components.
-        m_Movement = m_Instance.GetComponent<TankMovement>();
-        m_Shooting = m_Instance.GetComponent<TankShooting>();
-        m_CanvasGameObject = m_Instance.GetComponentInChildren<Canvas>().gameObject;
+        if (m_PlayerNumber != -1)
+        {
+            // Get references to the components.
+            m_Movement = m_Instance.GetComponent<TankMovement>();
+            // Set the player numbers to be consistent across the scripts.
+            m_Movement.m_PlayerNumber = m_PlayerNumber;
+         
+        } else
+        {
+            m_Enemy = m_Instance.GetComponent<TankEnemy>();
+        }
 
-        // Set the player numbers to be consistent across the scripts.
-        m_Movement.m_PlayerNumber = m_PlayerNumber;
+        m_Shooting = m_Instance.GetComponent<TankShooting>();
         m_Shooting.m_PlayerNumber = m_PlayerNumber;
+
+        m_CanvasGameObject = m_Instance.GetComponentInChildren<Canvas>().gameObject;
 
         // Create a string using the correct color that says 'PLAYER 1' etc based on the tank's color and the player's number.
         m_ColoredPlayerText = "<color=#" + ColorUtility.ToHtmlStringRGB(m_PlayerColor) + ">PLAYER " + m_PlayerNumber + "</color>";
@@ -67,7 +76,22 @@ public class TankManager
         m_CanvasGameObject.SetActive(true);
     }
 
+    // Used during the phases of the game where the player shouldn't be able to control their tank.
+    public void DisableEnemy()
+    {
+        m_Enemy.enabled = false;
 
+        m_CanvasGameObject.SetActive(false);
+    }
+
+
+    // Used during the phases of the game where the player should be able to control their tank.
+    public void EnableEnemy()
+    {
+        m_Enemy.enabled = true;
+
+        m_CanvasGameObject.SetActive(true);
+    }
     // Used at the start of each round to put the tank into it's default state.
     public void Reset()
     {

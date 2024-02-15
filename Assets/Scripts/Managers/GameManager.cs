@@ -11,7 +11,9 @@ public class GameManager : MonoBehaviour
     public CameraControl m_CameraControl;       // Reference to the CameraControl script for control during different phases.
     public Text m_MessageText;                  // Reference to the overlay Text to display winning text, etc.
     public GameObject m_TankPrefab;             // Reference to the prefab the players will control.
-    public TankManager[] m_Tanks;               // A collection of managers for enabling and disabling different aspects of the tanks.
+    public GameObject m_TankEnemyPrefab;             // Reference to the prefab of the enemies.
+    public TankManager[] m_PlayerTanks;               // A collection of managers for enabling and disabling different aspects of the tanks.
+    public TankManager[] m_EnemyTanks;               // A collection of managers for enabling and disabling different aspects of the tanks.
 
 
     private int m_RoundNumber;                  // Which round the game is currently on.
@@ -37,14 +39,21 @@ public class GameManager : MonoBehaviour
 
     private void SpawnAllTanks()
     {
-        // For all the tanks...
-        for (int i = 0; i < m_Tanks.Length; i++)
+        // For all the player tanks...
+        for (int i = 0; i < m_PlayerTanks.Length; i++)
         {
-            // ... create them, set their player number and references needed for control.
-            m_Tanks[i].m_Instance =
-                Instantiate(m_TankPrefab, m_Tanks[i].m_SpawnPoint.position, m_Tanks[i].m_SpawnPoint.rotation) as GameObject;
-            m_Tanks[i].m_PlayerNumber = i + 1;
-            m_Tanks[i].Setup();
+            m_PlayerTanks[i].m_Instance = Instantiate(m_TankPrefab, m_PlayerTanks[i].m_SpawnPoint.position, m_PlayerTanks[i].m_SpawnPoint.rotation) as GameObject;
+            m_PlayerTanks[i].m_PlayerNumber = i + 1;
+            m_PlayerTanks[i].m_Instance.tag = "PlayerTank";
+            m_PlayerTanks[i].Setup();
+        }
+
+        // For all the enemy tanks...
+        for (int i = 0; i < m_EnemyTanks.Length; i++)
+        {
+            m_EnemyTanks[i].m_Instance = Instantiate(m_TankEnemyPrefab, m_EnemyTanks[i].m_SpawnPoint.position, m_EnemyTanks[i].m_SpawnPoint.rotation) as GameObject;
+            m_EnemyTanks[i].m_PlayerNumber = -1;
+            m_EnemyTanks[i].Setup();
         }
     }
 
@@ -52,13 +61,19 @@ public class GameManager : MonoBehaviour
     private void SetCameraTargets()
     {
         // Create a collection of transforms the same size as the number of tanks.
-        Transform[] targets = new Transform[m_Tanks.Length];
+        Transform[] targets = new Transform[m_PlayerTanks.Length + m_EnemyTanks.Length];
 
-        // For each of these transforms...
-        for (int i = 0; i < targets.Length; i++)
+        int t = 0;
+
+        for (int i = 0; i < m_PlayerTanks.Length; i++)
         {
-            // ... set it to the appropriate tank transform.
-            targets[i] = m_Tanks[i].m_Instance.transform;
+            targets[t] = m_PlayerTanks[i].m_Instance.transform;
+            t++;
+        }
+        for (int i = 0; i < m_EnemyTanks.Length; i++)
+        {
+            targets[t] = m_EnemyTanks[i].m_Instance.transform;
+            t++;
         }
 
         // These are the targets the camera should follow.
@@ -162,10 +177,10 @@ public class GameManager : MonoBehaviour
         int numTanksLeft = 0;
 
         // Go through all the tanks...
-        for (int i = 0; i < m_Tanks.Length; i++)
+        for (int i = 0; i < m_PlayerTanks.Length; i++)
         {
             // ... and if they are active, increment the counter.
-            if (m_Tanks[i].m_Instance.activeSelf)
+            if (m_PlayerTanks[i].m_Instance.activeSelf)
                 numTanksLeft++;
         }
 
@@ -179,11 +194,11 @@ public class GameManager : MonoBehaviour
     private TankManager GetRoundWinner()
     {
         // Go through all the tanks...
-        for (int i = 0; i < m_Tanks.Length; i++)
+        for (int i = 0; i < m_PlayerTanks.Length; i++)
         {
             // ... and if one of them is active, it is the winner so return it.
-            if (m_Tanks[i].m_Instance.activeSelf)
-                return m_Tanks[i];
+            if (m_PlayerTanks[i].m_Instance.activeSelf)
+                return m_PlayerTanks[i];
         }
 
         // If none of the tanks are active it is a draw so return null.
@@ -195,11 +210,11 @@ public class GameManager : MonoBehaviour
     private TankManager GetGameWinner()
     {
         // Go through all the tanks...
-        for (int i = 0; i < m_Tanks.Length; i++)
+        for (int i = 0; i < m_PlayerTanks.Length; i++)
         {
             // ... and if one of them has enough rounds to win the game, return it.
-            if (m_Tanks[i].m_Wins == m_NumRoundsToWin)
-                return m_Tanks[i];
+            if (m_PlayerTanks[i].m_Wins == m_NumRoundsToWin)
+                return m_PlayerTanks[i];
         }
 
         // If no tanks have enough rounds to win, return null.
@@ -221,9 +236,9 @@ public class GameManager : MonoBehaviour
         message += "\n\n\n\n";
 
         // Go through all the tanks and add each of their scores to the message.
-        for (int i = 0; i < m_Tanks.Length; i++)
+        for (int i = 0; i < m_PlayerTanks.Length; i++)
         {
-            message += m_Tanks[i].m_ColoredPlayerText + ": " + m_Tanks[i].m_Wins + " WINS\n";
+            message += m_PlayerTanks[i].m_ColoredPlayerText + ": " + m_PlayerTanks[i].m_Wins + " WINS\n";
         }
 
         // If there is a game winner, change the entire message to reflect that.
@@ -237,27 +252,40 @@ public class GameManager : MonoBehaviour
     // This function is used to turn all the tanks back on and reset their positions and properties.
     private void ResetAllTanks()
     {
-        for (int i = 0; i < m_Tanks.Length; i++)
+        for (int i = 0; i < m_PlayerTanks.Length; i++)
         {
-            m_Tanks[i].Reset();
+            m_PlayerTanks[i].Reset();
+        }
+
+        for (int i = 0; i < m_EnemyTanks.Length; i++)
+        {
+            m_EnemyTanks[i].Reset();
         }
     }
 
 
     private void EnableTankControl()
     {
-        for (int i = 0; i < m_Tanks.Length; i++)
+        for (int i = 0; i < m_PlayerTanks.Length; i++)
         {
-            m_Tanks[i].EnableControl();
+            m_PlayerTanks[i].EnableControl();
+        }
+        for (int i = 0; i < m_EnemyTanks.Length; i++)
+        {
+            m_EnemyTanks[i].EnableEnemy();
         }
     }
 
 
     private void DisableTankControl()
     {
-        for (int i = 0; i < m_Tanks.Length; i++)
+        for (int i = 0; i < m_PlayerTanks.Length; i++)
         {
-            m_Tanks[i].DisableControl();
+            m_PlayerTanks[i].DisableControl();
+        }
+        for (int i = 0; i < m_EnemyTanks.Length; i++)
+        {
+            m_EnemyTanks[i].DisableEnemy();
         }
     }
 }
